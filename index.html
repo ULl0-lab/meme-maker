@@ -85,16 +85,34 @@ h1 .hl { background: linear-gradient(transparent 58%, var(--pink) 58% 90%, trans
 }
 .sub { margin: 0; color: var(--muted); font-size: 17px; }
 .doodle { position: absolute; pointer-events: none; }
-.doodle.star { right: 6px; top: -6px; width: 46px; }
+/* 별은 제목 옆에 붙여서 말풍선 글자를 가리지 않도록 함 */
+h1 .star { display: inline-block; width: 0.8em; height: 0.8em; margin-left: 6px; vertical-align: -0.02em; transform: rotate(12deg); }
+/* 미리보기 아래 사진 조절 버튼 줄 (사진을 불러온 뒤에만 보임) */
+.photo-bar { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 10px; }
+.btn.small { font-size: 17px; padding: 3px 12px; box-shadow: 2px 2px 0 var(--shadow); min-width: 44px; }
+/* 미리보기 위에서 사진과 글자를 직접 끌어 옮김 */
+canvas#cv { touch-action: none; cursor: grab; }
+canvas#cv.dragging { cursor: grabbing; }
+/* 비율 버튼은 한 줄에 3개씩 */
+.seg.ratio { flex-wrap: wrap; }
+.seg.ratio button { flex: 1 1 28%; }
 .doodle.squig { right: 70px; top: 30px; width: 70px; }
 
 .main { display: grid; grid-template-columns: minmax(0, 1fr) 350px; gap: 22px; align-items: start; }
 @media (max-width: 860px) { .main { grid-template-columns: minmax(0, 1fr); } h1 { font-size: 2.4rem; } .doodle.squig { display: none; } }
 
-.stage { padding: 18px; display: grid; place-items: center; min-height: 320px; transition: transform .15s; }
+/* 미리보기는 스크롤해도 화면에 붙어 있어서, 아래 설정을 바꾸면서 사진을 계속 볼 수 있음 */
+.stage { padding: 18px; display: grid; place-items: center; transition: transform .15s; position: sticky; top: calc(env(safe-area-inset-top, 0px) + 12px); z-index: 5; }
 .stage.drag { transform: rotate(-0.6deg) scale(1.01); outline: 3px dashed var(--pink); outline-offset: 6px; }
-canvas { max-width: 100%; height: auto; display: block; border: 2px solid var(--ink); border-radius: 6px; }
+canvas { max-width: 100%; max-height: 72vh; width: auto; height: auto; margin: 0 auto; display: block; border: 2px solid var(--ink); border-radius: 6px; }
 .stage-hint { margin-top: 10px; font-size: 16px; color: var(--muted); text-align: center; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--paper); }
+@media (max-width: 860px) {
+  .stage { top: env(safe-area-inset-top, 0px); padding: 10px; }
+  canvas { max-height: 40vh; }
+  .stage-hint { font-size: 14px; margin-top: 6px; line-height: 1.3; }
+  .photo-bar { margin-top: 6px; }
+}
 
 .panel { padding: 20px 18px; display: grid; gap: 15px; }
 .field { display: grid; gap: 4px; }
@@ -152,10 +170,9 @@ footer { text-align: center; color: var(--muted); font-size: 15px; }
     <span id="mascotSlot"></span>
     <div class="title-block">
       <div class="bubble sketch">안녕! 나는 몽당이야. 사진 올리고 한마디 써봐!</div>
-      <h1><span class="hl">짤</span> 메이커</h1>
+      <h1><span class="hl">짤</span> 메이커<svg class="star" viewBox="0 0 50 50" aria-hidden="true"><path d="M25 4 L30 19 L46 19 L33 29 L38 45 L25 35 L12 45 L17 29 L4 19 L20 19 Z" fill="#ffd54a" stroke="#2b2a33" stroke-width="3" stroke-linejoin="round"/></svg></h1>
       <p class="sub">사진은 내 브라우저 안에서만 쓰이고 어디에도 올라가지 않아요.</p>
     </div>
-    <svg class="doodle star" viewBox="0 0 50 50" aria-hidden="true"><path d="M25 4 L30 19 L46 19 L33 29 L38 45 L25 35 L12 45 L17 29 L4 19 L20 19 Z" fill="#ffd54a" stroke="#2b2a33" stroke-width="2.5" stroke-linejoin="round"/></svg>
     <svg class="doodle squig" viewBox="0 0 80 24" aria-hidden="true"><path d="M3 14 Q13 2 23 14 T43 14 T63 14 T78 12" fill="none" stroke="#ff9fb8" stroke-width="3.5" stroke-linecap="round"/></svg>
   </header>
 
@@ -163,7 +180,12 @@ footer { text-align: center; color: var(--muted); font-size: 15px; }
     <section class="stage sketch" id="stage" aria-label="미리보기">
       <div>
         <canvas id="cv" width="800" height="800"></canvas>
-        <div class="stage-hint">여기에 사진을 끌어다 놓거나, 복사한 이미지를 붙여넣기(Ctrl+V)해도 돼요.</div>
+        <div class="photo-bar" id="photoBar" hidden>
+          <button type="button" class="btn small" id="pOut" aria-label="사진 작게">－</button>
+          <button type="button" class="btn small" id="pIn" aria-label="사진 크게">＋</button>
+          <button type="button" class="btn small" id="pReset">원래대로</button>
+        </div>
+        <div class="stage-hint" id="stageHint">글자는 잡고 끌면 옮겨져요. 사진은 여기로 끌어다 놓거나 붙여넣기(Ctrl+V)해도 돼요.</div>
       </div>
     </section>
 
@@ -174,9 +196,20 @@ footer { text-align: center; color: var(--muted); font-size: 15px; }
       </div>
 
       <div class="field">
+        <span class="label">짤 비율</span>
+        <div class="seg ratio" id="ratio">
+          <button type="button" data-v="orig" aria-pressed="true">원본</button>
+          <button type="button" data-v="1:1" aria-pressed="false">1:1</button>
+          <button type="button" data-v="3:4" aria-pressed="false">3:4</button>
+          <button type="button" data-v="4:3" aria-pressed="false">4:3</button>
+          <button type="button" data-v="9:16" aria-pressed="false">9:16</button>
+          <button type="button" data-v="16:9" aria-pressed="false">16:9</button>
+        </div>
+      </div>
+
+      <div class="field">
         <label for="txt">넣을 문구 (줄바꿈 가능)</label>
-        <textarea id="txt">월요일 아침 출근길
-나:</textarea>
+        <textarea id="txt">Test message!!!</textarea>
       </div>
 
       <div class="field">
@@ -284,32 +317,70 @@ const cv = $("cv"), ctx = cv.getContext("2d");
 const MAX_SIDE = 1600;            // 너무 큰 사진은 이 크기로 줄여서 처리
 let bgImage = null;               // 사용자가 올린 이미지
 let align = "center";
+let tx = 50, ty = 85;              // 글자 위치(%) - 끌기와 슬라이더가 함께 사용
+let textBox = null;                // 글자가 차지하는 영역(캔버스 좌표), 글자 끌기 판정용
+let ratio = "orig";                // 짤 비율
+const RATIOS = { "1:1": 1, "3:4": 3 / 4, "4:3": 4 / 3, "9:16": 9 / 16, "16:9": 16 / 9 };
+
+// 비율에 맞는 캔버스 크기 계산 (긴 변이 maxSide를 넘지 않게)
+function canvasSize(iw, ih, maxSide) {
+  const long = Math.min(maxSide, Math.max(iw, ih));
+  if (ratio === "orig") {
+    const f = long / Math.max(iw, ih);
+    return { W: Math.round(iw * f), H: Math.round(ih * f) };
+  }
+  const r = RATIOS[ratio];
+  return r >= 1 ? { W: long, H: Math.round(long / r) } : { W: Math.round(long * r), H: long };
+}
 
 // 사진이 없을 때 쓰는 예시 배경 (공책 종이 + 몽당이)
 function drawSampleBackground() {
-  cv.width = 800; cv.height = 800;
+  const { W, H } = canvasSize(800, 800, 800);
+  cv.width = W; cv.height = H;
   ctx.fillStyle = "#cfe8ff";
-  ctx.fillRect(0, 0, 800, 800);
+  ctx.fillRect(0, 0, W, H);
   ctx.strokeStyle = "rgba(255,255,255,0.7)";
   ctx.lineWidth = 2;
-  for (let y = 40; y < 800; y += 40) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(800, y); ctx.stroke(); }
+  for (let y = 40; y < H; y += 40) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
   if (mascotImg.complete && mascotImg.naturalWidth) {
-    // 몽당이를 살짝 기울여 가운데 배치
+    // 몽당이를 살짝 기울여 가운데 배치 (캔버스 짧은 변에 맞춰 크기 조절)
+    const k = Math.min(W, H) / 800;
     ctx.save();
-    ctx.translate(400, 330);
+    ctx.translate(W / 2, H * 0.41);
     ctx.rotate(-0.08);
-    ctx.drawImage(mascotImg, -165, -220, 330, 440);
+    ctx.drawImage(mascotImg, -165 * k, -220 * k, 330 * k, 440 * k);
     ctx.restore();
   }
 }
 
-// 업로드한 이미지를 캔버스 크기에 맞춰 그림
+// 사진 배치 상태: 배율과 사진 중심 위치(캔버스 크기 대비 비율, 0.5가 가운데)
+const photo = { s: 1, cx: 0.5, cy: 0.5 };
+const MIN_S = 0.1, MAX_S = 5;
+
+// 업로드한 이미지를 그림: 고른 비율의 캔버스를 사진으로 꽉 채우고(넘치는 부분은 잘림), 끌어서 보이는 부분 선택
 function drawImageBackground() {
-  let w = bgImage.naturalWidth, h = bgImage.naturalHeight;
-  const scale = Math.min(1, MAX_SIDE / Math.max(w, h));
-  w = Math.round(w * scale); h = Math.round(h * scale);
-  cv.width = w; cv.height = h;
-  ctx.drawImage(bgImage, 0, 0, w, h);
+  const iw = bgImage.naturalWidth, ih = bgImage.naturalHeight;
+  const { W, H } = canvasSize(iw, ih, MAX_SIDE);
+  cv.width = W; cv.height = H;
+  // 사진을 줄였을 때 드러나는 빈 곳은 흰색으로 채움
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, W, H);
+  const c = Math.max(W / iw, H / ih) * photo.s;
+  const dw = iw * c, dh = ih * c;
+  ctx.drawImage(bgImage, photo.cx * W - dw / 2, photo.cy * H - dh / 2, dw, dh);
+}
+
+// 배율 변경 (한계값 안으로 제한)
+function zoomBy(factor) {
+  photo.s = Math.min(MAX_S, Math.max(MIN_S, photo.s * factor));
+  scheduleRender();
+}
+
+// 드래그·핀치 중 연속 호출을 화면 갱신 주기에 맞춰 한 번씩만 그림
+let rafId = 0;
+function scheduleRender() {
+  if (rafId) return;
+  rafId = requestAnimationFrame(() => { rafId = 0; render(); });
 }
 
 // 전체 다시 그리기
@@ -326,8 +397,8 @@ async function render() {
   const lines = $("txt").value.split("\n");
   const lineH = size * 1.2;
   const sw = +$("sw").value * (W / 800);
-  const x = W * (+$("posX").value / 100);
-  const yCenter = H * (+$("posY").value / 100);
+  const x = W * (tx / 100);
+  const yCenter = H * (ty / 100);
 
   ctx.font = `${size}px "${font}", sans-serif`;
   ctx.textAlign = align;
@@ -337,7 +408,10 @@ async function render() {
 
   // 여러 줄 문구의 세로 중심이 지정 위치에 오도록 시작점 계산
   let y = yCenter - (lineH * (lines.length - 1)) / 2;
+  const top = y - lineH / 2;
+  let maxW = 0;
   for (const line of lines) {
+    maxW = Math.max(maxW, ctx.measureText(line).width);
     if (sw > 0) {
       ctx.strokeStyle = $("stroke").value;
       ctx.lineWidth = sw;
@@ -347,6 +421,10 @@ async function render() {
     ctx.fillText(line, x, y);
     y += lineH;
   }
+  // 글자를 잡을 수 있는 영역 기록 (손가락으로 잡기 쉽게 여유를 둠)
+  const left = align === "left" ? x : align === "right" ? x - maxW : x - maxW / 2;
+  const pad = Math.max(sw, size * 0.25);
+  textBox = { x: left - pad, y: top - pad, w: maxW + pad * 2, h: lineH * lines.length + pad * 2 };
   $("fallback").hidden = true;
 }
 
@@ -358,6 +436,11 @@ function syncOutputs() {
   $("swOut").textContent = $("sw").value;
 }
 
+// 사진 배치 초기화
+function resetPhoto() {
+  photo.s = 1; photo.cx = 0.5; photo.cy = 0.5;
+}
+
 // 파일을 이미지로 읽어 배경으로 설정
 function loadFile(file) {
   if (!file || !file.type.startsWith("image/")) {
@@ -367,6 +450,9 @@ function loadFile(file) {
   const img = new Image();
   img.onload = () => {
     bgImage = img;
+    resetPhoto();
+    $("photoBar").hidden = false;
+    $("stageHint").textContent = "글자를 잡고 끌면 글자가, 나머지 부분을 끌면 사진이 움직여요. 두 손가락이나 휠, ＋ －로 사진 크기를 바꿔요.";
     $("status").textContent = `사진을 불러왔어요 (${img.naturalWidth} x ${img.naturalHeight}).`;
     render();
   };
@@ -376,8 +462,113 @@ function loadFile(file) {
 
 // 이벤트 연결
 ["txt", "font", "size", "posY", "posX", "fill", "stroke", "sw"].forEach((id) => {
-  $(id).addEventListener("input", () => { syncOutputs(); render(); });
+  $(id).addEventListener("input", () => {
+    if (id === "posX") tx = +$("posX").value;
+    if (id === "posY") ty = +$("posY").value;
+    syncOutputs(); render();
+  });
 });
+
+// 짤 비율 선택: 바꾸면 사진 배치를 처음 상태(꽉 채우고 가운데)로
+$("ratio").addEventListener("click", (e) => {
+  const b = e.target.closest("button"); if (!b) return;
+  ratio = b.dataset.v;
+  $("ratio").querySelectorAll("button").forEach((x) => x.setAttribute("aria-pressed", x === b));
+  resetPhoto();
+  render();
+});
+
+// 사진 직접 조절 버튼
+$("pIn").addEventListener("click", () => zoomBy(1.15));
+$("pOut").addEventListener("click", () => zoomBy(1 / 1.15));
+$("pReset").addEventListener("click", () => { resetPhoto(); render(); });
+
+// 캔버스 위 끌기(한 손가락/마우스)와 핀치 확대(두 손가락)
+const pointers = new Map();
+let lastPinch = null;   // 직전 두 손가락 사이 거리와 중간점
+
+function canvasRatio() {
+  // 화면에 보이는 크기 → 실제 캔버스 비율 좌표로 바꾸기 위한 값
+  const r = cv.getBoundingClientRect();
+  return { rw: r.width, rh: r.height };
+}
+function pinchInfo() {
+  const [a, b] = [...pointers.values()];
+  return { d: Math.hypot(a.x - b.x, a.y - b.y), mx: (a.x + b.x) / 2, my: (a.y + b.y) / 2 };
+}
+
+let dragMode = null;   // "text"(글자 이동) 또는 "photo"(사진 이동/확대)
+
+// 화면 좌표 → 캔버스 좌표
+function toCanvas(e) {
+  const r = cv.getBoundingClientRect();
+  return { x: (e.clientX - r.left) * cv.width / r.width, y: (e.clientY - r.top) * cv.height / r.height };
+}
+function hitText(p) {
+  const b = textBox;
+  return !!b && p.x >= b.x && p.x <= b.x + b.w && p.y >= b.y && p.y <= b.y + b.h;
+}
+const clampPct = (v) => Math.min(100, Math.max(0, v));
+
+cv.addEventListener("pointerdown", (e) => {
+  cv.setPointerCapture(e.pointerId);
+  pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (pointers.size === 1) {
+    // 글자 위를 잡으면 글자, 아니면 사진을 움직임
+    dragMode = hitText(toCanvas(e)) ? "text" : (bgImage ? "photo" : null);
+  } else if (pointers.size === 2 && bgImage) {
+    dragMode = "photo";
+    lastPinch = pinchInfo();
+  }
+  if (dragMode) cv.classList.add("dragging");
+});
+
+cv.addEventListener("pointermove", (e) => {
+  if (!pointers.has(e.pointerId) || !dragMode) return;
+  const prev = pointers.get(e.pointerId);
+  const { rw, rh } = canvasRatio();
+  const dx = e.clientX - prev.x, dy = e.clientY - prev.y;
+  pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (pointers.size === 1) {
+    if (dragMode === "text") {
+      // 글자 이동: 슬라이더 값도 같이 맞춰줌
+      tx = clampPct(tx + (dx / rw) * 100);
+      ty = clampPct(ty + (dy / rh) * 100);
+      $("posX").value = Math.round(tx);
+      $("posY").value = Math.round(ty);
+      syncOutputs();
+    } else {
+      // 사진 이동: 움직인 만큼 보이는 부분이 바뀜
+      photo.cx += dx / rw;
+      photo.cy += dy / rh;
+    }
+  } else if (pointers.size === 2 && dragMode === "photo") {
+    // 두 손가락: 벌리면 확대, 오므리면 축소, 중간점이 움직이면 이동
+    const now = pinchInfo();
+    if (lastPinch && lastPinch.d > 0) {
+      photo.s = Math.min(MAX_S, Math.max(MIN_S, photo.s * (now.d / lastPinch.d)));
+      photo.cx += (now.mx - lastPinch.mx) / rw;
+      photo.cy += (now.my - lastPinch.my) / rh;
+    }
+    lastPinch = now;
+  }
+  scheduleRender();
+});
+
+function endPointer(e) {
+  pointers.delete(e.pointerId);
+  lastPinch = pointers.size === 2 ? pinchInfo() : null;
+  if (pointers.size === 0) { dragMode = null; cv.classList.remove("dragging"); }
+}
+cv.addEventListener("pointerup", endPointer);
+cv.addEventListener("pointercancel", endPointer);
+
+// 마우스 휠: 위로 굴리면 확대, 아래로 굴리면 축소
+cv.addEventListener("wheel", (e) => {
+  if (!bgImage) return;
+  e.preventDefault();
+  zoomBy(Math.exp(-e.deltaY * 0.0015));
+}, { passive: false });
 $("align").addEventListener("click", (e) => {
   const b = e.target.closest("button"); if (!b) return;
   align = b.dataset.v;
