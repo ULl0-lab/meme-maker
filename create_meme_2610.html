@@ -1,0 +1,454 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="내 사진에 문구를 얹어 짤을 만드는 무료 짤 메이커">
+<title>짤 메이커</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gaegu:wght@400;700&family=Black+Han+Sans&family=Do+Hyeon&family=Jua&family=Nanum+Pen+Script&family=Gamja+Flower&display=swap">
+<style>
+/* 레이아웃: 공책 종이 배경 위에 손그림 테두리 카드 2개(미리보기 / 편집), 휴대폰에서는 세로로 쌓임 */
+:root {
+  --paper: #fffbe6;
+  --rule: #c9dcf2;
+  --margin: #f2a7a7;
+  --ink: #2b2a33;
+  --muted: #6b6774;
+  --card: #ffffff;
+  --pink: #ff9fb8;
+  --pink-ink: #2b2a33;
+  --sky: #a9d8ff;
+  --shadow: #2b2a33;
+  --font-hand: "Gaegu", "Gamja Flower", "Comic Sans MS", system-ui, sans-serif;
+  --font-title: "Gaegu", "Nanum Pen Script", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #1f2233; --rule: #2e3550; --margin: #6e3b4a; --ink: #f1eee6;
+    --muted: #b3afc0; --card: #2a2d42; --pink: #ff8fab; --pink-ink: #1f2233;
+    --sky: #7fb8e6; --shadow: #0f1120;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #1f2233; --rule: #2e3550; --margin: #6e3b4a; --ink: #f1eee6;
+  --muted: #b3afc0; --card: #2a2d42; --pink: #ff8fab; --pink-ink: #1f2233;
+  --sky: #7fb8e6; --shadow: #0f1120;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  /* 공책 줄과 왼쪽 빨간 여백선 */
+  background-color: var(--paper);
+  background-image:
+    linear-gradient(90deg, transparent 46px, var(--margin) 46px, var(--margin) 48px, transparent 48px),
+    repeating-linear-gradient(180deg, transparent 0 31px, var(--rule) 31px 32px);
+  color: var(--ink); font-family: var(--font-hand);
+  font-size: 18px; line-height: 1.45;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 48px;
+}
+.wrap { max-width: 1120px; margin: 0 auto; display: grid; gap: 22px; }
+
+/* 손그림처럼 삐뚤한 테두리 공통 스타일 */
+.sketch {
+  background: var(--card);
+  border: 2.5px solid var(--ink);
+  border-radius: 255px 18px 225px 18px / 18px 225px 18px 255px;
+  box-shadow: 4px 5px 0 var(--shadow);
+}
+
+/* 머리말: 마스코트 + 말풍선 + 제목 */
+header { display: flex; align-items: flex-end; gap: 14px; flex-wrap: wrap; position: relative; }
+.mascot { width: 104px; height: auto; flex: none; animation: bob 2.6s ease-in-out infinite; transform-origin: 50% 90%; }
+@keyframes bob { 0%,100% { transform: rotate(-4deg) translateY(0); } 50% { transform: rotate(4deg) translateY(-4px); } }
+.title-block { display: grid; gap: 6px; min-width: 0; flex: 1; }
+h1 {
+  font-family: var(--font-title); font-weight: 700; font-size: 3rem; line-height: 1;
+  margin: 0; text-wrap: balance;
+}
+h1 .hl { background: linear-gradient(transparent 58%, var(--pink) 58% 90%, transparent 90%); padding: 0 4px; }
+.bubble {
+  position: relative; display: inline-block; justify-self: start;
+  padding: 6px 16px; font-size: 19px;
+}
+.bubble::before {
+  content: ""; position: absolute; left: -12px; bottom: 10px;
+  border: 8px solid transparent; border-right: 12px solid var(--ink);
+}
+.bubble::after {
+  content: ""; position: absolute; left: -7px; bottom: 12px;
+  border: 6px solid transparent; border-right: 9px solid var(--card);
+}
+.sub { margin: 0; color: var(--muted); font-size: 17px; }
+.doodle { position: absolute; pointer-events: none; }
+.doodle.star { right: 6px; top: -6px; width: 46px; }
+.doodle.squig { right: 70px; top: 30px; width: 70px; }
+
+.main { display: grid; grid-template-columns: minmax(0, 1fr) 350px; gap: 22px; align-items: start; }
+@media (max-width: 860px) { .main { grid-template-columns: minmax(0, 1fr); } h1 { font-size: 2.4rem; } .doodle.squig { display: none; } }
+
+.stage { padding: 18px; display: grid; place-items: center; min-height: 320px; transition: transform .15s; }
+.stage.drag { transform: rotate(-0.6deg) scale(1.01); outline: 3px dashed var(--pink); outline-offset: 6px; }
+canvas { max-width: 100%; height: auto; display: block; border: 2px solid var(--ink); border-radius: 6px; }
+.stage-hint { margin-top: 10px; font-size: 16px; color: var(--muted); text-align: center; }
+
+.panel { padding: 20px 18px; display: grid; gap: 15px; }
+.field { display: grid; gap: 4px; }
+.field > label, .label { font-size: 18px; font-weight: 700; }
+.row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.row output { font-variant-numeric: tabular-nums; font-size: 17px; color: var(--muted); }
+textarea, select {
+  width: 100%; font: inherit; font-size: 18px; color: var(--ink); background: var(--paper);
+  border: 2px solid var(--ink); border-radius: 12px 4px 12px 4px; padding: 8px 10px;
+}
+textarea { min-height: 80px; resize: vertical; }
+input[type=range] { width: 100%; accent-color: var(--pink); }
+input[type=color] {
+  width: 46px; height: 34px; border: 2px solid var(--ink); border-radius: 50% 40% 50% 45%;
+  padding: 2px; background: var(--paper); cursor: pointer;
+}
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.colors { display: flex; gap: 18px; flex-wrap: wrap; }
+.colors .field { grid-template-columns: auto auto; align-items: center; gap: 8px; }
+.seg { display: flex; gap: 6px; }
+.seg button {
+  flex: 1; font: inherit; font-size: 17px; padding: 4px 0; cursor: pointer;
+  background: var(--paper); color: var(--ink);
+  border: 2px solid var(--ink); border-radius: 14px 6px 12px 5px;
+}
+.seg button[aria-pressed="true"] { background: var(--sky); color: #2b2a33; font-weight: 700; transform: rotate(-2deg); }
+.btn {
+  font: inherit; font-weight: 700; font-size: 20px; padding: 8px 14px; cursor: pointer;
+  background: var(--paper); color: var(--ink); text-align: center;
+  border: 2.5px solid var(--ink); border-radius: 22px 8px 20px 6px;
+  box-shadow: 3px 3px 0 var(--shadow); transition: transform .12s, box-shadow .12s;
+}
+.btn:hover { transform: rotate(-1.5deg) translateY(-1px); }
+.btn:active { transform: translate(3px, 3px); box-shadow: 0 0 0 var(--shadow); }
+.btn.primary { background: var(--pink); color: var(--pink-ink); font-size: 23px; }
+.btn:focus-visible, .seg button:focus-visible, textarea:focus-visible, select:focus-visible, input:focus-visible {
+  outline: 3px dashed var(--pink); outline-offset: 3px;
+}
+.actions { display: grid; gap: 8px; }
+.status { font-size: 17px; color: var(--muted); min-height: 1.4em; }
+.fallback { display: grid; gap: 8px; }
+.fallback .label { font-size: 16px; font-weight: 400; }
+.fallback img { border-radius: 6px; border: 2px solid var(--ink); }
+input[type=file] { display: none; }
+footer { text-align: center; color: var(--muted); font-size: 15px; }
+@media (prefers-reduced-motion: reduce) { .mascot { animation: none; } * { transition: none !important; } }
+</style>
+<style>body{margin:0}[hidden]{display:none!important}img{max-width:100%}</style>
+</head>
+<body>
+
+
+<div class="wrap">
+  <header>
+    <span id="mascotSlot"></span>
+    <div class="title-block">
+      <div class="bubble sketch">안녕! 나는 몽당이야. 사진 올리고 한마디 써봐!</div>
+      <h1><span class="hl">짤</span> 메이커</h1>
+      <p class="sub">사진은 내 브라우저 안에서만 쓰이고 어디에도 올라가지 않아요.</p>
+    </div>
+    <svg class="doodle star" viewBox="0 0 50 50" aria-hidden="true"><path d="M25 4 L30 19 L46 19 L33 29 L38 45 L25 35 L12 45 L17 29 L4 19 L20 19 Z" fill="#ffd54a" stroke="#2b2a33" stroke-width="2.5" stroke-linejoin="round"/></svg>
+    <svg class="doodle squig" viewBox="0 0 80 24" aria-hidden="true"><path d="M3 14 Q13 2 23 14 T43 14 T63 14 T78 12" fill="none" stroke="#ff9fb8" stroke-width="3.5" stroke-linecap="round"/></svg>
+  </header>
+
+  <div class="main">
+    <section class="stage sketch" id="stage" aria-label="미리보기">
+      <div>
+        <canvas id="cv" width="800" height="800"></canvas>
+        <div class="stage-hint">여기에 사진을 끌어다 놓거나, 복사한 이미지를 붙여넣기(Ctrl+V)해도 돼요.</div>
+      </div>
+    </section>
+
+    <section class="panel sketch" aria-label="편집">
+      <div class="actions">
+        <label class="btn" for="file">사진 불러오기</label>
+        <input type="file" id="file" accept="image/*">
+      </div>
+
+      <div class="field">
+        <label for="txt">넣을 문구 (줄바꿈 가능)</label>
+        <textarea id="txt">월요일 아침 출근길
+나:</textarea>
+      </div>
+
+      <div class="field">
+        <label for="font">글꼴</label>
+        <select id="font">
+          <option value="Black Han Sans">검은고딕 (굵은 제목체)</option>
+          <option value="Do Hyeon">도현</option>
+          <option value="Jua">주아</option>
+          <option value="Gaegu">개구 (손글씨)</option>
+          <option value="Gamja Flower">감자꽃 (손글씨)</option>
+          <option value="Nanum Pen Script">나눔손글씨 펜</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <div class="row"><label for="size">글씨 크기</label><output id="sizeOut">72</output></div>
+        <input type="range" id="size" min="16" max="200" value="72">
+      </div>
+
+      <div class="grid2">
+        <div class="field">
+          <div class="row"><label for="posY">세로 위치</label><output id="posYOut">85%</output></div>
+          <input type="range" id="posY" min="0" max="100" value="85">
+        </div>
+        <div class="field">
+          <div class="row"><label for="posX">가로 위치</label><output id="posXOut">50%</output></div>
+          <input type="range" id="posX" min="0" max="100" value="50">
+        </div>
+      </div>
+
+      <div class="field">
+        <span class="label">정렬</span>
+        <div class="seg" id="align">
+          <button type="button" data-v="left" aria-pressed="false">왼쪽</button>
+          <button type="button" data-v="center" aria-pressed="true">가운데</button>
+          <button type="button" data-v="right" aria-pressed="false">오른쪽</button>
+        </div>
+      </div>
+
+      <div class="colors">
+        <div class="field"><label for="fill">글자색</label><input type="color" id="fill" value="#ffffff"></div>
+        <div class="field"><label for="stroke">테두리색</label><input type="color" id="stroke" value="#000000"></div>
+      </div>
+
+      <div class="field">
+        <div class="row"><label for="sw">테두리 두께</label><output id="swOut">8</output></div>
+        <input type="range" id="sw" min="0" max="30" value="8">
+      </div>
+
+      <div class="actions">
+        <button type="button" class="btn primary" id="save">PNG로 저장하기</button>
+        <div class="status" id="status" role="status"></div>
+        <div class="fallback" id="fallback" hidden>
+          <span class="label">여기서는 바로 저장이 안 돼요. 아래 이미지를 길게 누르거나 우클릭해서 저장해 주세요.</span>
+          <img id="fallbackImg" alt="완성된 짤 이미지">
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <footer>타인의 사진이나 캐릭터 이미지를 쓸 때는 저작권과 초상권을 꼭 지켜주세요.</footer>
+</div>
+
+<script>
+// 마스코트 '몽당이' (짧은 연필 캐릭터) SVG - 머리말과 예시 캔버스에서 함께 사용
+const MASCOT_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 160" width="240" height="320">
+  <defs>
+    <filter id="wob"><feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="2" seed="7"/><feDisplacementMap in="SourceGraphic" scale="2.6"/></filter>
+  </defs>
+  <g filter="url(#wob)" stroke="#2b2a33" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M38 72 Q24 66 18 52" fill="none"/>
+    <circle cx="17" cy="49" r="4" fill="#ffd54a"/>
+    <path d="M82 74 Q96 80 102 70" fill="none"/>
+    <circle cx="103" cy="68" r="4" fill="#ffd54a"/>
+    <rect x="39" y="12" width="42" height="22" rx="9" fill="#ff9fb8"/>
+    <rect x="37" y="32" width="46" height="12" rx="2" fill="#cfd3dc"/>
+    <path d="M48 33 V43 M60 33 V43 M72 33 V43" fill="none" stroke-width="2"/>
+    <rect x="39" y="44" width="42" height="60" fill="#ffd54a"/>
+    <path d="M53 46 V102 M67 46 V102" fill="none" stroke-width="1.8" opacity=".55"/>
+    <path d="M39 104 L81 104 L60 142 Z" fill="#f5d6a8"/>
+    <path d="M53.5 130 L66.5 130 L60 142 Z" fill="#2b2a33"/>
+    <circle cx="52" cy="66" r="4" fill="#2b2a33" stroke="none"/>
+    <circle cx="68" cy="66" r="4" fill="#2b2a33" stroke="none"/>
+    <circle cx="53.4" cy="64.6" r="1.4" fill="#ffffff" stroke="none"/>
+    <circle cx="69.4" cy="64.6" r="1.4" fill="#ffffff" stroke="none"/>
+    <ellipse cx="46" cy="76" rx="4.5" ry="3" fill="#ff8fa3" stroke="none" opacity=".8"/>
+    <ellipse cx="74" cy="76" rx="4.5" ry="3" fill="#ff8fa3" stroke="none" opacity=".8"/>
+    <path d="M55 75 Q60 81 65 75" fill="none" stroke-width="2.6"/>
+    <path d="M46 20 Q52 16 56 19" fill="none" stroke="#ffffff" stroke-width="2.4" opacity=".8"/>
+  </g>
+</svg>`;
+
+// 머리말에 마스코트 넣기
+document.getElementById("mascotSlot").outerHTML =
+  MASCOT_SVG.replace("<svg ", '<svg class="mascot" role="img" aria-label="연필 캐릭터 몽당이" ');
+
+// 예시 캔버스용 마스코트 이미지 준비
+const mascotImg = new Image();
+const mascotReady = new Promise((ok) => { mascotImg.onload = ok; mascotImg.onerror = ok; });
+mascotImg.src = URL.createObjectURL(new Blob([MASCOT_SVG], { type: "image/svg+xml" }));
+
+// 요소 참조
+const $ = (id) => document.getElementById(id);
+const cv = $("cv"), ctx = cv.getContext("2d");
+const MAX_SIDE = 1600;            // 너무 큰 사진은 이 크기로 줄여서 처리
+let bgImage = null;               // 사용자가 올린 이미지
+let align = "center";
+
+// 사진이 없을 때 쓰는 예시 배경 (공책 종이 + 몽당이)
+function drawSampleBackground() {
+  cv.width = 800; cv.height = 800;
+  ctx.fillStyle = "#cfe8ff";
+  ctx.fillRect(0, 0, 800, 800);
+  ctx.strokeStyle = "rgba(255,255,255,0.7)";
+  ctx.lineWidth = 2;
+  for (let y = 40; y < 800; y += 40) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(800, y); ctx.stroke(); }
+  if (mascotImg.complete && mascotImg.naturalWidth) {
+    // 몽당이를 살짝 기울여 가운데 배치
+    ctx.save();
+    ctx.translate(400, 330);
+    ctx.rotate(-0.08);
+    ctx.drawImage(mascotImg, -165, -220, 330, 440);
+    ctx.restore();
+  }
+}
+
+// 업로드한 이미지를 캔버스 크기에 맞춰 그림
+function drawImageBackground() {
+  let w = bgImage.naturalWidth, h = bgImage.naturalHeight;
+  const scale = Math.min(1, MAX_SIDE / Math.max(w, h));
+  w = Math.round(w * scale); h = Math.round(h * scale);
+  cv.width = w; cv.height = h;
+  ctx.drawImage(bgImage, 0, 0, w, h);
+}
+
+// 전체 다시 그리기
+async function render() {
+  const font = $("font").value;
+  const sizeVal = +$("size").value;
+  try { await document.fonts.load(`${sizeVal}px "${font}"`, "가나다"); } catch (e) {}
+
+  if (bgImage) drawImageBackground(); else drawSampleBackground();
+
+  const W = cv.width, H = cv.height;
+  // 슬라이더 값은 폭 800px 기준, 실제 캔버스 폭에 비례해 환산
+  const size = Math.round(sizeVal * (W / 800));
+  const lines = $("txt").value.split("\n");
+  const lineH = size * 1.2;
+  const sw = +$("sw").value * (W / 800);
+  const x = W * (+$("posX").value / 100);
+  const yCenter = H * (+$("posY").value / 100);
+
+  ctx.font = `${size}px "${font}", sans-serif`;
+  ctx.textAlign = align;
+  ctx.textBaseline = "middle";
+  ctx.lineJoin = "round";
+  ctx.miterLimit = 2;
+
+  // 여러 줄 문구의 세로 중심이 지정 위치에 오도록 시작점 계산
+  let y = yCenter - (lineH * (lines.length - 1)) / 2;
+  for (const line of lines) {
+    if (sw > 0) {
+      ctx.strokeStyle = $("stroke").value;
+      ctx.lineWidth = sw;
+      ctx.strokeText(line, x, y);
+    }
+    ctx.fillStyle = $("fill").value;
+    ctx.fillText(line, x, y);
+    y += lineH;
+  }
+  $("fallback").hidden = true;
+}
+
+// 슬라이더 값 표시 갱신
+function syncOutputs() {
+  $("sizeOut").textContent = $("size").value;
+  $("posYOut").textContent = $("posY").value + "%";
+  $("posXOut").textContent = $("posX").value + "%";
+  $("swOut").textContent = $("sw").value;
+}
+
+// 파일을 이미지로 읽어 배경으로 설정
+function loadFile(file) {
+  if (!file || !file.type.startsWith("image/")) {
+    $("status").textContent = "이미지 파일만 불러올 수 있어요. JPG, PNG, WEBP 파일을 골라주세요.";
+    return;
+  }
+  const img = new Image();
+  img.onload = () => {
+    bgImage = img;
+    $("status").textContent = `사진을 불러왔어요 (${img.naturalWidth} x ${img.naturalHeight}).`;
+    render();
+  };
+  img.onerror = () => { $("status").textContent = "사진을 읽지 못했어요. 다른 파일로 다시 해볼까요?"; };
+  img.src = URL.createObjectURL(file);
+}
+
+// 이벤트 연결
+["txt", "font", "size", "posY", "posX", "fill", "stroke", "sw"].forEach((id) => {
+  $(id).addEventListener("input", () => { syncOutputs(); render(); });
+});
+$("align").addEventListener("click", (e) => {
+  const b = e.target.closest("button"); if (!b) return;
+  align = b.dataset.v;
+  $("align").querySelectorAll("button").forEach((x) => x.setAttribute("aria-pressed", x === b));
+  render();
+});
+$("file").addEventListener("change", (e) => loadFile(e.target.files[0]));
+
+// 끌어다 놓기
+const stage = $("stage");
+["dragenter", "dragover"].forEach((t) => stage.addEventListener(t, (e) => { e.preventDefault(); stage.classList.add("drag"); }));
+["dragleave", "drop"].forEach((t) => stage.addEventListener(t, (e) => { e.preventDefault(); stage.classList.remove("drag"); }));
+stage.addEventListener("drop", (e) => loadFile(e.dataTransfer.files[0]));
+
+// 붙여넣기
+document.addEventListener("paste", (e) => {
+  const item = [...(e.clipboardData?.items || [])].find((i) => i.type.startsWith("image/"));
+  if (item) loadFile(item.getAsFile());
+});
+
+// 한국 시각 기준 yymmddhhmm 접두어 생성
+function kstStamp() {
+  const p = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Seoul", year: "2-digit", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", hour12: false
+  }).formatToParts(new Date());
+  const g = (t) => p.find((x) => x.type === t).value;
+  return g("year") + g("month") + g("day") + g("hour").replace("24", "00") + g("minute");
+}
+
+// 저장: 다운로드 기능이 있으면 사용, 없으면 완성 이미지를 보여줌
+let downloads = null;
+(async () => { try { downloads = await window.claude?.use?.("downloads"); } catch (e) {} })();
+
+function showFallback() {
+  $("fallbackImg").src = cv.toDataURL("image/png");
+  $("fallback").hidden = false;
+}
+
+$("save").addEventListener("click", async () => {
+  await render();
+  const filename = `${kstStamp()}_짤.png`;
+  if (!downloads) {
+    try {
+      cv.toBlob((blob) => {
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = filename;
+        document.body.appendChild(a); a.click(); a.remove();
+        $("status").textContent = `${filename} 파일로 저장했어요.`;
+      }, "image/png");
+    } catch (e) { $("status").textContent = ""; showFallback(); }
+    return;
+  }
+  cv.toBlob(async (blob) => {
+    try {
+      await downloads.save({ filename, data: blob });
+      $("status").textContent = `${filename} 파일로 저장했어요.`;
+    } catch (err) {
+      if (err?.code === "declined") $("status").textContent = "저장을 취소했어요.";
+      else if (err?.code === "rate_limited") $("status").textContent = "저장 창이 이미 열려 있어요. 잠시 후 다시 눌러주세요.";
+      else { $("status").textContent = ""; showFallback(); }
+    }
+  }, "image/png");
+});
+
+// 첫 화면: 예시 배경 + 예시 문구
+syncOutputs();
+render();
+mascotReady.then(() => { if (!bgImage) render(); });
+</script>
+
+</body>
+</html>
